@@ -131,7 +131,10 @@ done < $acc_list
 while read p; do
 echo "$p" 
 
-if [ -f work/fastq/$p"_1.fastq" ] && [ -f work/fastq/$p"_2.fastq" ]; then
+if ([ -f work/trimmed/$p"_1_val_1.fq" ] && [ -f work/trimmed/$p"_2_val_2.fq" ]) || [ -f work/trimmed/$p"_trimmed.fq" ]; then
+    echo $p already trimmed
+
+elif [ -f work/fastq/$p"_1.fastq" ] && [ -f work/fastq/$p"_2.fastq" ]; then
     trim_galore --paired -o work/trimmed/ work/fastq/$p"_1.fastq" work/fastq/$p"_2.fastq"
     rm work/fastq/$p*
 else
