@@ -148,7 +148,7 @@ bowtie2-build --quiet -f $virus_path work/virus_ref/$Virus
 # -----------------------------------------------------------------------------------------------------------------------------------------
 
 
-step_one() {
+filtering() {
 
     # -F 260 removes all unmapped and secondary mapping reads. Greatly reduces bam file size
     samtools view -S -b -@ 8 -F 260 $Virus"_"$p > $Virus"_"$p".bam"
@@ -160,6 +160,12 @@ step_one() {
     rm $Virus"_"$p".bam"
 
     samtools index $Virus"_"$p"_sorted.bam"
+    
+    # creating num_reads to count number of reads in the bam file.
+    num_reads=$(samtools view -c $Virus"_"$p"_sorted.bam")
+}
+
+step_one() {
 
     # setting up my variables for subsequent use
     ref_name=$(samtools view $Virus"_"$p"_sorted.bam" | cut -f 3 | head -1)
@@ -356,34 +362,54 @@ echo $p
 if [ -f work/trimmed/$p"_1_val_1.fq" ] && [ -f work/trimmed/$p"_2_val_2.fq" ]; then
     # read mapping
     time bowtie2 --local --very-sensitive-local --threads 8 -k 10 -x work/virus_ref/$Virus -1 work/trimmed/$p"_1_val_1.fq" -2 work/trimmed/$p"_2_val_2.fq" -S  $Virus"_"$p
+    
+    filtering
 
-    reads_type="paired"
+    if [ "$num_reads" -eq 0 ]; then
+        sed -i '/'$p'/d' $acc_list
 
-    step_one
+        echo $Virus is not present in Library $p as 0 reads mapped to your reference virus. Removing accession from accession file.
+    else
 
-    # reading the infer_experiment file and using regex, getting the percentages for each strand.
-    strand_one=$(grep '1++,1--,2+-,2-+' work/infer_exp/$p".infer_experiment.txt" | sed 's/.*1++,1--,2+-,2-+": \([0-9.]*\).*/\1/')
-    strand_two=$(grep '1+-,1-+,2++,2--' work/infer_exp/$p".infer_experiment.txt" | sed 's/.*1+-,1-+,2++,2--": \([0-9.]*\).*/\1/')
+        reads_type="paired"
 
-    paired
+        step_one
 
-    step_two_paired
+        # reading the infer_experiment file and using regex, getting the percentages for each strand.
+        strand_one=$(grep '1++,1--,2+-,2-+' work/infer_exp/$p".infer_experiment.txt" | sed 's/.*1++,1--,2+-,2-+": \([0-9.]*\).*/\1/')
+        strand_two=$(grep '1+-,1-+,2++,2--' work/infer_exp/$p".infer_experiment.txt" | sed 's/.*1+-,1-+,2++,2--": \([0-9.]*\).*/\1/')
+
+        paired
+
+        step_two_paired
+    fi
+
+    
     
 else
     # read mapping
     time bowtie2 --local --very-sensitive-local --threads 8 -k 10 -x work/virus_ref/$Virus -U work/trimmed/$p"_trimmed.fq" -S  $Virus"_"$p
 
-    reads_type="single"
+    filtering
 
-    step_one
+    if [ "$num_reads" -eq 0 ]; then
+        sed -i '/'$p'/d' $acc_list
 
-    # reading the infer_experiment file and using regex, getting the percentages for each strand.
-    strand_one=$(grep '++,--' work/infer_exp/$p".infer_experiment.txt" | sed 's/.*++,--": \([0-9.]*\).*/\1/')
-    strand_two=$(grep '+-,-+' work/infer_exp/$p".infer_experiment.txt" | sed 's/.*+-,-+": \([0-9.]*\).*/\1/')
+        echo $Virus is not present in Library $p as 0 reads mapped to your reference virus. Removing accession from accession file.
+    else
 
-    single
+        reads_type="single"
 
-    step_two_single
+        step_one
+
+        # reading the infer_experiment file and using regex, getting the percentages for each strand.
+        strand_one=$(grep '++,--' work/infer_exp/$p".infer_experiment.txt" | sed 's/.*++,--": \([0-9.]*\).*/\1/')
+        strand_two=$(grep '+-,-+' work/infer_exp/$p".infer_experiment.txt" | sed 's/.*+-,-+": \([0-9.]*\).*/\1/')
+
+        single
+
+        step_two_single
+    fi
 fi
 
 
