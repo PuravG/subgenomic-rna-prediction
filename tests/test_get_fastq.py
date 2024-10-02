@@ -6,6 +6,13 @@ import hashlib
 import gzip
 
 
+def matchRunTimeErrorSnakemake(snakemake_output, string):
+    for line in str(snakemake_output.stderr.decode('utf-8')).split("\n"):
+        if string in line:
+            return True
+    return False
+
+
 def compare_zipped(filepath1, filepath2):
     g1 = gzip.open(filepath1).readlines()
     g2 = gzip.open(filepath2).readlines()
@@ -29,8 +36,9 @@ def run_snakemake(config, func):
                 --snakefile subgenomic-rna-prediction/pipeline/Snakefile \
                 --configfile %s \
                 -R %s" % (config, func)
-    result = subprocess.run(statement, shell=True)
-    return result.returncode
+    result = subprocess.run(statement, shell=True,
+                            capture_output=True)
+    return result
 
 
 @pytest.mark.parametrize(
@@ -53,10 +61,10 @@ def test_getfastq_se(test_file, exp_file, config_file, stem):
     config_path = "tests/config_files/fastq_tests/%s" % config_file
 
     # Run the pipeline
-    return_code = run_snakemake(config_path, "get_fastq")
+    result = run_snakemake(config_path, "get_fastq")
 
     # Check if snakemake ran successfully
-    assert return_code == 0  # Check if snakemake ran successfully
+    assert result.returncode == 0  # Check if snakemake ran successfully
 
     # Check the output files are identical to the expected outputs
     assert compare_zipped(expected_output, test_output)
@@ -93,10 +101,10 @@ def test_getfastq_pe(test_files, exp_files, config_file, stem):
     config_path = "tests/config_files/fastq_tests/%s" % config_file
 
     # Run the pipeline
-    return_code = run_snakemake(config_path, "get_fastq")
+    result = run_snakemake(config_path, "get_fastq")
 
     # Check if snakemake ran successfully
-    assert return_code == 0
+    assert result.returncode == 0
 
     # Check the output files are identical to the expected outputs
     assert compare_zipped(expected_output_1, test_output_1)
@@ -107,3 +115,38 @@ def test_getfastq_pe(test_files, exp_files, config_file, stem):
 
     # Remove test data
     shutil.rmtree(test_output_dir)
+
+
+@pytest.mark.parametrize("config_file",
+                         ["config_se_missing.yaml",
+                          "config_pe_missing1.yaml",
+                          "config_pe_missing2.yaml"])
+def test_getfastq_missing(config_file):
+    """Test Snakefile with missing input fastq files - should raise \
+       a runtime error - One of your FASTQ files does not exist"""
+    # Set up file paths
+    config_path = "tests/config_files/fastq_tests/%s" % config_file
+
+    # Run the pipeline
+    result = run_snakemake(config_path, "get_fastq")
+
+    # Check error is correct
+    assert matchRunTimeErrorSnakemake(
+        result, "At least one of your FASTQ files does not exist")
+    assert result.returncode == 1, result.returncode
+
+
+def test_getfastq_allmissing():
+    """Test Snakefile with missing input fastq files - should raise
+       a runtime error -
+       FASTQ input specified but no fastq files provided"""
+    # Set up file paths
+    config_path = "tests/config_files/fastq_tests/config_missing_all.yaml"
+
+    # Run the pipeline
+    result = run_snakemake(config_path, "get_fastq")
+
+    # Check error is correct
+    assert matchRunTimeErrorSnakemake(
+        result, "FASTQ input specified but no fastq files provided")
+    assert result.returncode == 1, result.returncode

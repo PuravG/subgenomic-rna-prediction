@@ -26,14 +26,12 @@ def zip_and_link(fastq_s, fastq_p1, fastq_p2, outdir, prefix):
             pathlib.Path(outfile_p1).touch(exist_ok=True)
             pathlib.Path(outfile_p2).touch(exist_ok=True)
         else:
-            raise RuntimeError("FASTQ file %s does not exist" % fastq_s)
+            raise RuntimeError(
+                "At least one of your FASTQ files does not exist: %s" % (
+                    fastq_s))
 
     elif fastq_p1 and fastq_p2:
         if os.path.exists(fastq_p1) and os.path.exists(fastq_p2):
-            if not os.path.exists(fastq_p2):
-                raise RuntimeError("The second paired end file does not exist \
-                                    at %s" % fastq_p2)
-
             if fastq_p1.endswith(".gz"):
                 ap1 = os.path.abspath(fastq_p1)
                 ap2 = os.path.abspath(fastq_p2)
@@ -44,8 +42,8 @@ def zip_and_link(fastq_s, fastq_p1, fastq_p2, outdir, prefix):
                 zip_to_file(fastq_p2, outfile_p2)
             pathlib.Path(outfile_s).touch(exist_ok=True)
         else:
-            raise RuntimeError("One of your FASTQ files does not exist: \
-                               %s or %s" % (fastq_p1, fastq_p2))
+            raise RuntimeError(
+                "At least one of your FASTQ files does not exist: %s or %s" % (
+                    fastq_p1, fastq_p2))
     else:
         raise RuntimeError("FASTQ input specified but no fastq files provided")
-

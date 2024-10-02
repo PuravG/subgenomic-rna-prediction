@@ -1,29 +1,11 @@
-[general]
-output_dir = tests/test_output
-# sra_id, raw_fastq, trimmed_fastq, bam
-start_point = raw_fastq
+general:
+  output_dir: placeholder
+  # sra_id, raw_fastq, trimmed_fastq, bam
+  start_point: raw_fastq
+  threads: 4
 
-[fastq]
-# Source for FASTQ files - can be local, ENA, SRA or ENA_Aspera
-source = ENA_Aspera
-
-# If you want to download a FASTQ file, provide the SRA run ID here
-sra_run = None
-
-# If using local  provide the paths here
-# Please only provide either paired end or single end files and leave the
-# other option blank - if both are provided only single end will be
-# processed
-outfile_prefix = hello
-single_end = None
-paired_end_1 = SRR18609750_1.fastq.gz
-paired_end_2 = SRR18609750_2.fastq.gz
-
-# if 
-# Path to bin folder for the Aspera connect executable (if using Aspera)
-aspera_bin = /home/katy/.aspera/connect/bin
-aspera_openssh = /home/katy/.aspera/connect/etc/asperaweb_id_dsa.openssh
-
-
-[params]
-threads = 4
+fastq:
+  outfile_prefix: pe_missing1
+  single_end: 
+  paired_end_1: tests/fastqs/imnothere.fastq.gz
+  paired_end_2: tests/fastqs/SRR18609750_2_small.fastq.gz
