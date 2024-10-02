@@ -1,0 +1,11 @@
+general:
+  output_dir: tests/test_output_fastqs_pe_unzip
+  # sra_id, raw_fastq, trimmed_fastq, bam
+  start_point: raw_fastq
+  threads: 4
+
+fastq:
+  outfile_prefix: pe_unzip
+  single_end: 
+  paired_end_1: tests/fastqs/SRR18609750_1_small.fastq
+  paired_end_2: tests/fastqs/SRR18609750_2_small.fastq

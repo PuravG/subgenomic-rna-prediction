@@ -1,0 +1,11 @@
+general:
+  output_dir: tests/test_output_fastqs_se_zip
+  # sra_id, raw_fastq, trimmed_fastq, bam
+  start_point: raw_fastq
+  threads: 4
+
+fastq:
+  outfile_prefix: se_zip
+  single_end: tests/fastqs/SRR7660720_small.fastq.gz
+  paired_end_1:
+  paired_end_2:
