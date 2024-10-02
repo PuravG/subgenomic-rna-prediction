@@ -1,29 +1,29 @@
 # Rule to handle the final output (similar to the last command in a bash pipeline)
-rule all:
-    input:
-        "output/final_output.txt"
+import os
+import configparser
+import subprocess
+import SGFastq
 
-# Example of a rule (this corresponds to one task in your bash script)
-rule task1:
+start_point = config['general']["start_point"]
+outdir = config['general']['output_dir']
+if start_point == "sra_id":
+    prefix = config["fastq"]["sra_run"]
+else:
+    prefix = config["fastq"]["outfile_prefix"]
+
+rule get_fastq:
     input:
-        "data/input_file.txt"  # Input file
     output:
-        "output/intermediate_file.txt"  # Output file
-    shell:
-        """
-        # Replace with the actual command from your bash script
-        some_command {input} > {output}
-        """
-
-# Add other rules as needed, each corresponding to steps from your bash script
-rule task2:
-    input:
-        "output/intermediate_file.txt"
-    output:
-        "output/final_output.txt"
-    shell:
-        """
-        another_command {input} > {output}
-        """
-
-
+        "%s/fastqs/%s.fq.gz" % (outdir, prefix),
+        "%s/fastqs/%s.fq.1.gz" % (outdir, prefix),
+        "%s/fastqs/%s.fq.2.gz" % (outdir, prefix)
+    run:
+        if start_point == "raw_fastq":
+            fastq_p1 = config["fastq"]["paired_end_1"]
+            fastq_p2 = config["fastq"]["paired_end_2"]
+            fastq_s = config["fastq"]["single_end"]
+            SGFastq.zip_and_link(fastq_s,
+                                 fastq_p1,
+                                 fastq_p2,
+                                 outdir,
+                                 prefix)
