@@ -5,7 +5,7 @@ general:
   threads: 4
 
 fastq:
-  outfile_prefix: all_missing
+  outfile_prefix: bad_start_point
   single_end:
   paired_end_1:
   paired_end_2:

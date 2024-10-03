@@ -42,22 +42,21 @@ def run_snakemake(config, func):
 
 
 @pytest.mark.parametrize(
-    "test_file, exp_file, config_file, stem",
+    "test_file, config_file, stem",
     [("se_zip.fq.gz",
-      "SRR7660720_small.fastq.gz",
       "config_se_zipped.yaml",
       "fastqs_se_zip"),
      ("se_unzip.fq.gz",
-      "SRR7660720_small.fastq.gz",
       "config_se_unzipped.yaml",
       "fastqs_se_unzip")])
-def test_getfastq_se(test_file, exp_file, config_file, stem):
+def test_getfastq_se(test_file, config_file, stem):
     """Test Snakefile for user provided single end zipped and unzipped \
        FASTQ files"""
     # Set up file paths
-    test_output_dir = "tests/test_output_%s" % stem
-    test_output = "%s/fastqs/%s" % (test_output_dir, test_file)
-    expected_output = "tests/expected_output/fastq_tests/%s" % exp_file
+    test_output_dir = f"tests/test_output_{stem}"
+    test_output = f"{test_output_dir}/fastqs/{test_file}"
+    expected_dir = "tests/expected_output/fastq_tests"
+    expected_output = f"{expected_dir}/SRR7660720_small.fastq.gz"
     config_path = "tests/config_files/fastq_tests/%s" % config_file
 
     # Run the pipeline
@@ -76,28 +75,26 @@ def test_getfastq_se(test_file, exp_file, config_file, stem):
 
 
 @pytest.mark.parametrize(
-    "test_files, exp_files, config_file, stem",
+    "test_files, config_file, stem",
     [(["pe_zip.fq.1.gz",
        "pe_zip.fq.2.gz"],
-      ["SRR18609750_1_small.fastq.gz",
-       "SRR18609750_2_small.fastq.gz"],
       "config_pe_zipped.yaml",
       "fastqs_pe_zip"),
      (["pe_unzip.fq.1.gz",
        "pe_unzip.fq.2.gz"],
-      ["SRR18609750_1_small.fastq.gz",
-       "SRR18609750_2_small.fastq.gz"],
       "config_pe_unzipped.yaml",
       "fastqs_pe_unzip")])
-def test_getfastq_pe(test_files, exp_files, config_file, stem):
+def test_getfastq_pe(test_files, config_file, stem):
     """Test Snakefile for user provided paired end zipped and unzipped \
        FASTQ files"""
     # Set up file paths
-    test_output_dir = "tests/test_output_%s" % stem
-    test_output_1 = "%s/fastqs/%s" % (test_output_dir, test_files[0])
-    test_output_2 = "%s/fastqs/%s" % (test_output_dir, test_files[1])
-    expected_output_1 = "tests/expected_output/fastq_tests/%s" % exp_files[0]
-    expected_output_2 = "tests/expected_output/fastq_tests/%s" % exp_files[1]
+    test_output_dir = f"tests/test_output_{stem}"
+    test_file_1, test_file_2 = test_files
+    test_output_1 = f"{test_output_dir}/fastqs/{test_file_1}"
+    test_output_2 = f"{test_output_dir}/fastqs/{test_file_2}"
+    expected_dir = "tests/expected_output/fastq_tests"
+    expected_output_1 = f"{expected_dir}/SRR18609750_1_small.fastq.gz"
+    expected_output_2 = f"{expected_dir}/SRR18609750_2_small.fastq.gz"
     config_path = "tests/config_files/fastq_tests/%s" % config_file
 
     # Run the pipeline
@@ -165,3 +162,25 @@ def test_getfastq_bad_start_point():
     assert matchRunTimeErrorSnakemake(
         result, "The start_point parameter should be")
     assert result.returncode == 1, result.returncode
+
+
+@pytest.mark.parametrize(
+    "config_file, stem, suffix",
+    [('config_pe_sra', 'fastqs_pe_sra', 'sra'),
+     ('config_pe_ena', 'fastqs_pe_ena', 'ena'),
+     ('config_pe_ena_aspera', 'fastqs_pe_ena_aspera', 'ena')])
+def test_getfastq_online_paired(config_file, stem, suffix):
+    expected_dir = "tests/expected_output/fastq_tests"
+    expected_output_1 = f"{expected_dir}/ERR5715266_{suffix}.fq.1.gz"
+    expected_output_2 = f"{expected_dir}/ERR5715266_{suffix}.fq.2.gz"
+    config_path = "tests/config_files/fastq_tests/%s.yaml" % config_file
+
+    result = run_snakemake(config_path, "get_fastq")
+
+    test_output_dir = f"tests/test_output_{stem}"
+    test_output_1 = f"{test_output_dir}/fastqs/ERR5715266.fq.1.gz"
+    test_output_2 = f"{test_output_dir}/fastqs/ERR5715266.fq.2.gz"
+
+    assert result.returncode == 0
+    assert compare_zipped(expected_output_1, test_output_1)
+    assert compare_zipped(expected_output_2, test_output_2)
