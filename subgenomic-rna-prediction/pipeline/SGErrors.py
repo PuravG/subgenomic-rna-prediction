@@ -33,3 +33,12 @@ def tool_fail(sra_id, stem):
 {stem} run failed with SRA ID {sra_id}
 ###
 """)
+
+
+def bad_download_source(method):
+    raise RuntimeError(
+                f"""
+###
+Download method {method} not found
+###
+""")

@@ -2,12 +2,12 @@
 import os
 import SGErrors
 import SGSetup
-import subprocess
 from typing import Optional
+from typing import TextIO
 import shutil
 
 
-def zip_to_file(infile: str, outfile: str, cmdout, logi):
+def zip_to_file(infile: str, outfile: str, cmdout: str, logi: TextIO):
     '''
     Compress file using pigz and save the output to outfile
 
@@ -25,15 +25,14 @@ def zip_to_file(infile: str, outfile: str, cmdout, logi):
     # Links need an absolute path
     ap = os.path.abspath(infile)
     statement = f'pigz -c {ap} > {outfile}'
-    SGSetup.log_command(cmdout, statement)
-    subprocess.run(statement, shell=True)
+    SGSetup.run_log_command(cmdout, statement)
 
 
 def zip_and_link(fastq_s: Optional[str],
                  fastq_p1: Optional[str],
                  fastq_p2: Optional[str],
                  outfiles: list,
-                 cmdout, logi):
+                 cmdout: str, logi: TextIO):
     '''
     fastq_s is the path to an input single end FASTQ file, fastq_p1 and
     fastq_p2 to input paired end fastq files - only either fastq_s or
@@ -75,8 +74,7 @@ def zip_and_link(fastq_s: Optional[str],
                 # link to the file
                 ap = os.path.abspath(fastq_s)
                 statement = f'ln -s {ap} {outfile_s}'
-                SGSetup.log_command(cmdout, statement)
-                subprocess.run(statement, shell=True)
+                SGSetup.run_log_command(cmdout, statement)
             else:
                 logi.info(f"FASTQ {fastq_s} is unzipped - zipping")
                 # gzip the file
@@ -112,14 +110,12 @@ def zip_and_link(fastq_s: Optional[str],
 
 
 def download_fastq_fasterqdump(sra_id: str, outdir: str, outfiles: list,
-                               cmdout, logi):
+                               cmdout: str, logi: TextIO):
     # Download the files
     statement = f'fasterq-dump --split-files {sra_id} --outdir {outdir}'
-    SGSetup.log_command(cmdout, statement)
-    fasterq = subprocess.run(statement, shell=True, capture_output=True)
+    SGSetup.run_log_command(cmdout, statement, outdir, 'fasterq',
+                            sra_id, logi)
 
-    SGSetup.write_check_log(fasterq, outdir, 'fasterq-dump',
-                            sra_id, 4, 'stderr')
     p1 = f'{outdir}/{sra_id}_1.fastq'
     p2 = f'{outdir}/{sra_id}_2.fastq'
     s = f'{outdir}/{sra_id}.fastq'
@@ -130,7 +126,7 @@ def download_fastq_fasterqdump(sra_id: str, outdir: str, outfiles: list,
         os.remove(p1)
         os.remove(p2)
         return ("paired")
-    elif os.path.exists(s):
+    else:
         zip_to_file(s, outfiles[0], cmdout, logi)
         os.remove(s)
         return ("single")
@@ -139,7 +135,7 @@ def download_fastq_fasterqdump(sra_id: str, outdir: str, outfiles: list,
 def download_fastq_ena(sra_id: str, outdir: str, outfiles: list,
                        method: str,
                        aspera_config: Optional[str],
-                       cmdout, logi):
+                       cmdout: str, logi: TextIO):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     root_dir = "/".join(script_dir.split("/")[:-2])
     ena_dir = f"{root_dir}/enaBrowserTools/python3"
@@ -148,8 +144,7 @@ def download_fastq_ena(sra_id: str, outdir: str, outfiles: list,
     elif method == 'ena_aspera':
         statement = f'{ena_dir}/enaDataGet -f fastq -as {aspera_config} \
 -d {outdir} {sra_id}'
-    SGSetup.log_command(cmdout, statement)
-    ena = subprocess.run(statement, shell=True, capture_output=True)
+    SGSetup.run_log_command(cmdout, statement, outdir, 'ena', sra_id, logi)
     if method == 'ena_aspera':
         shutil.move(f'{outdir}/{sra_id}/logs',
                     f'{outdir}/fastqs/enaDataGet_logs')
@@ -159,44 +154,26 @@ def download_fastq_ena(sra_id: str, outdir: str, outfiles: list,
 
     outs, outp1, outp2 = outfiles
     if os.path.exists(p1) and os.path.exists(p2):
-        if method == 'ena_aspera':
-            SGSetup.write_check_log(ena, outdir, 'enaDataGet',
-                                    sra_id, 13, 'stdout')
-        else:
-            SGSetup.write_check_log(ena, outdir, 'enaDataGet',
-                                    sra_id, 5, 'stdout')
-
         statement = f'mv {p1} {outp1}'
-        SGSetup.log_command(cmdout, statement)
-        subprocess.run(statement, shell=True)
+        SGSetup.run_log_command(cmdout, statement)
 
         statement = f'mv {p2} {outp2}'
-        SGSetup.log_command(cmdout, statement)
-        subprocess.run(statement, shell=True)
+        SGSetup.run_log_command(cmdout, statement)
 
         statement = f'rm -rf {outdir}/{sra_id}'
-        SGSetup.log_command(cmdout, statement)
-        subprocess.run(statement, shell=True)
+        SGSetup.run_log_command(cmdout, statement)
         return ("paired")
-    elif os.path.exists(s):
-        if method == 'ena_aspera':
-            SGSetup.write_check_log(ena, outdir, 'enaDataGet',
-                                    sra_id, 8, 'stdout')
-        else:
-            SGSetup.write_check_log(ena, outdir, 'enaDataGet',
-                                    sra_id, 4, 'stdout')
 
+    elif os.path.exists(s):
         statement = f'mv {s} {outs}'
-        SGSetup.log_command(cmdout, statement)
-        subprocess.run(statement, shell=True)
+        SGSetup.run_log_command(cmdout, statement)
         statement = f'rm -rf {outdir}/{sra_id}'
-        SGSetup.log_command(cmdout, statement)
-        subprocess.run(statement, shell=True)
+        SGSetup.run_log_command(cmdout, statement)
         return ("single")
 
 
 def download_fastq(sra_id: str, method: str, outfiles: list, outdir: str,
-                   aspera_config: Optional[str], cmdout, logi):
+                   aspera_config: Optional[str], cmdout: str, logi: TextIO):
     '''
     Download a FASTQ file using the specified method.
 
@@ -214,7 +191,9 @@ def download_fastq(sra_id: str, method: str, outfiles: list, outdir: str,
         Output directory for log files etc
     aspera_config: str
         Path to Aspera config file, only needed if using Aspera
-
+    cmdout: str
+        Path to command line log file
+    logi: logger.
     Returns
     -------
     None
@@ -226,6 +205,8 @@ def download_fastq(sra_id: str, method: str, outfiles: list, outdir: str,
     elif method == 'ena' or method == 'ena_aspera':
         typ = download_fastq_ena(sra_id, outdir, outfiles, method,
                                  aspera_config, cmdout, logi)
+    else:
+        SGErrors.bad_download_source(method)
     typ_out.write(typ)
     typ_out.close()
     if typ == 'paired':

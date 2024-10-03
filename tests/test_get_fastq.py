@@ -131,6 +131,7 @@ def test_getfastq_missing(config_file):
     assert matchRunTimeErrorSnakemake(
         result, "At least one of your FASTQ files does not exist")
     assert result.returncode == 1, result.returncode
+    shutil.rmtree('placeholder')
 
 
 def test_getfastq_allmissing():
@@ -147,11 +148,12 @@ def test_getfastq_allmissing():
     assert matchRunTimeErrorSnakemake(
         result, "FASTQ input specified but no fastq files provided")
     assert result.returncode == 1, result.returncode
+    shutil.rmtree('placeholder')
 
 
 def test_getfastq_bad_start_point():
     """Test Snakefile with wrong start point - not raw_fastq,
-    trimmed fastq, sra_id or bam"""
+    trimmed fastq, sra_id or bam. Should raise a Runtime error"""
     # Set up file paths
     config_path = "tests/config_files/fastq_tests/config_bad_start_point.yaml"
 
@@ -162,6 +164,7 @@ def test_getfastq_bad_start_point():
     assert matchRunTimeErrorSnakemake(
         result, "The start_point parameter should be")
     assert result.returncode == 1, result.returncode
+    shutil.rmtree('placeholder')
 
 
 @pytest.mark.parametrize(
@@ -184,3 +187,57 @@ def test_getfastq_online_paired(config_file, stem, suffix):
     assert result.returncode == 0
     assert compare_zipped(expected_output_1, test_output_1)
     assert compare_zipped(expected_output_2, test_output_2)
+    shutil.rmtree(test_output_dir)
+
+
+@pytest.mark.parametrize(
+    "config_file, stem, suffix",
+    [('config_se_sra', 'fastqs_se_sra', 'sra'),
+     ('config_se_ena', 'fastqs_se_ena', 'ena'),
+     ('config_se_ena_aspera', 'fastqs_se_ena_aspera', 'ena')])
+def test_getfastq_online_single(config_file, stem, suffix):
+    expected_dir = "tests/expected_output/fastq_tests"
+    expected_output = f"{expected_dir}/SRR28628208_{suffix}.fq.gz"
+    config_path = "tests/config_files/fastq_tests/%s.yaml" % config_file
+
+    result = run_snakemake(config_path, "get_fastq")
+
+    test_output_dir = f"tests/test_output_{stem}"
+    test_output = f"{test_output_dir}/fastqs/SRR28628208.fq.gz"
+
+    assert result.returncode == 0
+    assert compare_zipped(expected_output, test_output)
+    shutil.rmtree(test_output_dir)
+
+
+def test_getfastq_bad_source():
+    """Test Snakefile with wrong source - not sra, ena, ena_aspera"""
+    # Set up file paths
+    config_path = "tests/config_files/fastq_tests/config_bad_source.yaml"
+
+    # Run the pipeline
+    result = run_snakemake(config_path, "get_fastq")
+
+    # Check error is correct
+    assert matchRunTimeErrorSnakemake(
+        result, "Download method")
+    assert result.returncode == 1, result.returncode
+    shutil.rmtree('placeholder')
+
+
+@pytest.mark.parametrize("config_file",
+                         ["config_bad_sra",
+                          "config_bad_ena"])
+def test_getfastq_bad_ID(config_file):
+    """Test Snakefile with invalid SRA ID and sra"""
+    # Set up file paths
+    config_path = "tests/config_files/fastq_tests/%s.yaml" % config_file
+
+    # Run the pipeline
+    result = run_snakemake(config_path, "get_fastq")
+
+    # Check error is correct
+    assert matchRunTimeErrorSnakemake(
+        result, "run failed with SRA ID ")
+    assert result.returncode == 1, result.returncode
+    shutil.rmtree('placeholder')

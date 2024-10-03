@@ -1,5 +1,5 @@
 general:
-  output_dir: output
+  output_dir: tests/test_output_fastqs_se_ena
   # sra_id, raw_fastq, trimmed_fastq, bam
   start_point: sra_id
   threads: 4
