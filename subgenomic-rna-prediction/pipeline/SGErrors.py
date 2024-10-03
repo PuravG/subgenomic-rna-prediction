@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 
 def fastq_not_found(filenames):
-    raise RuntimeError("""
+    fn = ", ".join(filenames)
+    raise RuntimeError(f"""
 ###
-At least one of your FASTQ files does not exist: %s
+At least one of your FASTQ files does not exist: {fn}
 ###
-""" % (",".join(filenames)))
+""")
 
 
-def no_files_found(filenames):
+def no_files_found():
     raise RuntimeError("""
 ###
 FASTQ input specified but no fastq files provided
@@ -17,19 +18,18 @@ FASTQ input specified but no fastq files provided
 
 
 def bad_start_point(start_point):
-    raise RuntimeError(
-                """
+    raise RuntimeError(f"""
 ###
 The start_point parameter should be sra_id, raw_fastq, trimmed_fastq or bam, \
-not %s
+not {start_point}
 ###
-""" % start_point)
+""")
 
 
-def fasterq_fail(sra_id):
+def tool_fail(sra_id, stem):
     raise RuntimeError(
-                """
+                f"""
 ###
-fasterq_dump run failed with SRA ID %s
+{stem} run failed with SRA ID {sra_id}
 ###
-""" % sra_id)
+""")
