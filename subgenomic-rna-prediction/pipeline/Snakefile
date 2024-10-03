@@ -1,8 +1,5 @@
-# Rule to handle the final output (similar to the last command in a bash pipeline)
-import os
-import configparser
-import subprocess
 import SGFastq
+import SGErrors
 
 start_point = config['general']["start_point"]
 outdir = config['general']['output_dir']
@@ -12,18 +9,22 @@ else:
     prefix = config["fastq"]["outfile_prefix"]
 
 rule get_fastq:
-    input:
     output:
-        "%s/fastqs/%s.fq.gz" % (outdir, prefix),
-        "%s/fastqs/%s.fq.1.gz" % (outdir, prefix),
-        "%s/fastqs/%s.fq.2.gz" % (outdir, prefix)
+        se = f"{outdir}/fastqs/{prefix}.fq.gz",
+        pe1 = f"{outdir}/fastqs/{prefix}.fq.1.gz",
+        pe2 = f"{outdir}/fastqs/{prefix}.fq.2.gz"
     run:
-        if start_point == "raw_fastq":
+        if start_point == "bam" or start_point == 'trimmed_fastq':
+            SGFastq.touch_only(output)
+        elif start_point == "raw_fastq":
             fastq_p1 = config["fastq"]["paired_end_1"]
             fastq_p2 = config["fastq"]["paired_end_2"]
             fastq_s = config["fastq"]["single_end"]
             SGFastq.zip_and_link(fastq_s,
                                  fastq_p1,
                                  fastq_p2,
-                                 outdir,
-                                 prefix)
+                                 output)
+        elif start_point == 'sra_id':
+            pass
+        else:
+            SGErrors.bad_start_point(start_point)

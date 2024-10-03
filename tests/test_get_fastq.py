@@ -150,3 +150,18 @@ def test_getfastq_allmissing():
     assert matchRunTimeErrorSnakemake(
         result, "FASTQ input specified but no fastq files provided")
     assert result.returncode == 1, result.returncode
+
+
+def test_getfastq_bad_start_point():
+    """Test Snakefile with wrong start point - not raw_fastq,
+    trimmed fastq, sra_id or bam"""
+    # Set up file paths
+    config_path = "tests/config_files/fastq_tests/config_bad_start_point.yaml"
+
+    # Run the pipeline
+    result = run_snakemake(config_path, "get_fastq")
+
+    # Check error is correct
+    assert matchRunTimeErrorSnakemake(
+        result, "The start_point parameter should be")
+    assert result.returncode == 1, result.returncode
