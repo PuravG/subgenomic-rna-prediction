@@ -1,12 +1,21 @@
 import SGFastq
 import SGErrors
+import SGSetup
+import os
 
 start_point = config['general']["start_point"]
 outdir = config['general']['output_dir']
+
 if start_point == "sra_id":
     prefix = config["fastq"]["sra_run"]
 else:
     prefix = config["fastq"]["outfile_prefix"]
+
+if not os.path.exists(outdir):
+    os.mkdir(outdir)
+
+logi = SGSetup.set_up_logging(outdir, prefix)
+cmdout = f'{outdir}/{prefix}_commands.log'
 
 rule get_fastq:
     output:
@@ -14,8 +23,9 @@ rule get_fastq:
         pe1 = f"{outdir}/fastqs/{prefix}.fq.1.gz",
         pe2 = f"{outdir}/fastqs/{prefix}.fq.2.gz"
     run:
+        
         if start_point == "bam" or start_point == 'trimmed_fastq':
-            SGFastq.touch_only(output)
+            SGFastq.touch_only(output, cmdout, logi)
         elif start_point == "raw_fastq":
             fastq_p1 = config["fastq"]["paired_end_1"]
             fastq_p2 = config["fastq"]["paired_end_2"]
@@ -23,11 +33,17 @@ rule get_fastq:
             SGFastq.zip_and_link(fastq_s,
                                  fastq_p1,
                                  fastq_p2,
-                                 output)
+                                 output,
+                                 cmdout,
+                                 logi)
         elif start_point == 'sra_id':
             SGFastq.download_fastq(config['fastq']['sra_run'],
                                    config['fastq']['source'].lower(),
                                    output,
-                                   outdir)
+                                   outdir,
+                                   config['fastq']['aspera_config'],
+                                   cmdout,
+                                   logi)
         else:
             SGErrors.bad_start_point(start_point)
+
