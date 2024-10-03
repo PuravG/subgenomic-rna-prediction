@@ -1,1 +1,4 @@
 man/_build
+tests/__pycache__
+subgenomic-rna-prediction/pipeline/__pycache__
+.snakemake
