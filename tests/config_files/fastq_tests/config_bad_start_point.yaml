@@ -1,0 +1,11 @@
+general:
+  output_dir: placeholder
+  # sra_id, raw_fastq, trimmed_fastq, bam
+  start_point: banana
+  threads: 4
+
+fastq:
+  outfile_prefix: all_missing
+  single_end:
+  paired_end_1:
+  paired_end_2:
