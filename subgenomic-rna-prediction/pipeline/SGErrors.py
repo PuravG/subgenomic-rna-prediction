@@ -42,3 +42,13 @@ def bad_download_source(method):
 Download method {method} not found
 ###
 """)
+
+
+def no_aspera_config(aspera_config):
+    raise FileNotFoundError(
+                f"""
+###
+Aspera config file not found at {aspera_config}. Specify a valid file or
+use source "ena" instead of "ena_aspera" to download without Aspera
+###
+""")

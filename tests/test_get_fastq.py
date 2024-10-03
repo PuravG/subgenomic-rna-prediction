@@ -241,3 +241,19 @@ def test_getfastq_bad_ID(config_file):
         result, "run failed with SRA ID ")
     assert result.returncode == 1, result.returncode
     shutil.rmtree('placeholder')
+
+
+def test_getfastq_no_aspera_config():
+    """Test Snakefile with aspera specified but no aspera config file"""
+    # Set up file paths
+    config_dir = 'tests/config_files/fastq_tests'
+    config_path = f"{config_dir}/config_se_ena_aspera_noconfig.yaml"
+
+    # Run the pipeline
+    result = run_snakemake(config_path, "get_fastq")
+
+    # Check error is correct
+    assert matchRunTimeErrorSnakemake(
+        result, "Aspera config file not found at")
+    assert result.returncode == 1, result.returncode
+    shutil.rmtree('placeholder')

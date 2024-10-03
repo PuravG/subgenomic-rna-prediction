@@ -17,6 +17,10 @@ def zip_to_file(infile: str, outfile: str, cmdout: str, logi: TextIO):
         Path to input file
     outfile: str
         Path to desired output file
+    cmdout:
+        Path to file to store bash commands
+    logi: logging.Logger
+        Path to open log file
 
     Returns
     -------
@@ -56,7 +60,10 @@ def zip_and_link(fastq_s: Optional[str],
     outfiles: list
         List of paths to single end, paired end 1, paired end 2 desired output
         files
-
+    cmdout:
+        Path to file to store bash commands
+    logi: logging.Logger
+        Path to open log file
     Returns
     -------
     None
@@ -111,6 +118,23 @@ def zip_and_link(fastq_s: Optional[str],
 
 def download_fastq_fasterqdump(sra_id: str, outdir: str, outfiles: list,
                                cmdout: str, logi: TextIO):
+    """
+    Wrapper to download files using NCBI fasterq-dump.
+
+    Parameters
+    ----------
+    sra_id: str
+        SRA run ID to download
+    outdir: str
+        Output directory for log files etc
+    outfiles: list
+        List of paths to single end, paired end 1, paired end 2 desired output
+        files
+    cmdout:
+        Path to file to store bash commands
+    logi: logging.Logger
+        Path to open log file
+    """
     # Download the files
     statement = f'fasterq-dump --split-files {sra_id} --outdir {outdir}'
     SGSetup.run_log_command(cmdout, statement, outdir, 'fasterq',
@@ -136,23 +160,67 @@ def download_fastq_ena(sra_id: str, outdir: str, outfiles: list,
                        method: str,
                        aspera_config: Optional[str],
                        cmdout: str, logi: TextIO):
+    """
+    Wrapper to download files using enaBrowserTools.
+    There is a bug in the current version of the tool which breaks it in
+    Python >= 3.11 so I have a local submodule version with two changes
+    in the utils.py file to fix this (changed SafeConfigParser to
+    ConfigParser).
+    If sra_aspera is specified, use the Aspera connect tool to increase \
+    (hopefully) download speed.
+
+    Parameters
+    ----------
+    sra_id: str
+        SRA run ID to download
+    outdir: str
+        Output directory for log files etc
+    outfiles: list
+        List of paths to single end, paired end 1, paired end 2 desired output
+        files
+    method: str
+        Either ena to download directly from ENA or ena_aspera to use
+        the Aspera connect tool.
+    aspera_config: str
+        Path to Aspera config file
+    cmdout:
+        Path to file to store bash commands
+    logi: logging.Logger
+        Path to open log file
+    """
+    # Need to run the local version of enaDataGet - determine the relative
+    # path to the directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
     root_dir = "/".join(script_dir.split("/")[:-2])
     ena_dir = f"{root_dir}/enaBrowserTools/python3"
+
+    # Build the statement to get the files
     if method == 'ena':
         statement = f'{ena_dir}/enaDataGet -f fastq -d {outdir} {sra_id}'
     elif method == 'ena_aspera':
+        # If Aspera is specified, check if the config file is in the right
+        # place, else fail
+        if not os.path.exists(aspera_config):
+            SGErrors.no_aspera_config(aspera_config)
         statement = f'{ena_dir}/enaDataGet -f fastq -as {aspera_config} \
 -d {outdir} {sra_id}'
+        
+    # Get the data
     SGSetup.run_log_command(cmdout, statement, outdir, 'ena', sra_id, logi)
+
+    # Aspera makes a folder with additional log files - move it into outdir
     if method == 'ena_aspera':
         shutil.move(f'{outdir}/{sra_id}/logs',
                     f'{outdir}/fastqs/enaDataGet_logs')
+        
+    # Paths where ENA will have stored the files
     p1 = f'{outdir}/{sra_id}/{sra_id}_1.fastq.gz'
     p2 = f'{outdir}/{sra_id}/{sra_id}_2.fastq.gz'
     s = f'{outdir}/{sra_id}/{sra_id}.fastq.gz'
 
     outs, outp1, outp2 = outfiles
+
+    # Move the files to the right place, delete empty directories
     if os.path.exists(p1) and os.path.exists(p2):
         statement = f'mv {p1} {outp1}'
         SGSetup.run_log_command(cmdout, statement)
@@ -191,24 +259,33 @@ def download_fastq(sra_id: str, method: str, outfiles: list, outdir: str,
         Output directory for log files etc
     aspera_config: str
         Path to Aspera config file, only needed if using Aspera
-    cmdout: str
-        Path to command line log file
-    logi: logger.
+    cmdout:
+        Path to file to store bash commands
+    logi: logging.Logger
+        Path to open log file
     Returns
     -------
     None
     '''
-    typ_out = open(f"{outdir}/data_type.txt", "w")
+
     if method == 'sra':
+        # Download using NCBI fasterq-dump
         typ = download_fastq_fasterqdump(sra_id, outdir, outfiles,
                                          cmdout, logi)
     elif method == 'ena' or method == 'ena_aspera':
+        # Download using ENA enaDataGet
         typ = download_fastq_ena(sra_id, outdir, outfiles, method,
                                  aspera_config, cmdout, logi)
     else:
         SGErrors.bad_download_source(method)
+
+    # Store whether the data is single or paired end in outdir/data_type.txt
+    typ_out = open(f"{outdir}/data_type.txt", "w")
     typ_out.write(typ)
     typ_out.close()
+
+    # Make empty placeholders for single / paired - whichever the data
+    # is not
     if typ == 'paired':
         SGSetup.touch_only([outfiles[0]], cmdout, logi)
     else:
