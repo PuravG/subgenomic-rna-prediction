@@ -26,16 +26,18 @@ def zip_to_file(infile: str, outfile: str, cmdout: str, logi: TextIO):
     -------
     None
     '''
+    logi.info(f"Zipping file {infile}")
     # Links need an absolute path
     ap = os.path.abspath(infile)
     statement = f'pigz -c {ap} > {outfile}'
-    SGSetup.run_log_command(cmdout, statement)
+    SGSetup.run_log_command(statement, cmdout)
 
 
 def zip_and_link(fastq_s: Optional[str],
                  fastq_p1: Optional[str],
                  fastq_p2: Optional[str],
                  outfiles: list,
+                 outdir: str,
                  cmdout: str, logi: TextIO):
     '''
     fastq_s is the path to an input single end FASTQ file, fastq_p1 and
@@ -81,13 +83,14 @@ def zip_and_link(fastq_s: Optional[str],
                 # link to the file
                 ap = os.path.abspath(fastq_s)
                 statement = f'ln -s {ap} {outfile_s}'
-                SGSetup.run_log_command(cmdout, statement)
+                SGSetup.run_log_command(statement, cmdout)
             else:
                 logi.info(f"FASTQ {fastq_s} is unzipped - zipping")
                 # gzip the file
                 zip_to_file(fastq_s, outfile_s, cmdout, logi)
             # Empty placeholders for paired end
             SGSetup.touch_only([outfile_p1, outfile_p2], cmdout, logi)
+            typ = 'single'
         else:
             # If the file path is not valid
             SGErrors.fastq_not_found([fastq_s])
@@ -96,6 +99,9 @@ def zip_and_link(fastq_s: Optional[str],
         if os.path.exists(fastq_p1) and os.path.exists(fastq_p2):
             # Assume ending with gz = gzipped
             if fastq_p1.endswith(".gz"):
+                logi.info(
+                    f"FASTQs {fastq_p1} and {fastq_p2} are already zipped - \
+                      creating links")
                 # Links need the absolute path
                 ap1 = os.path.abspath(fastq_p1)
                 ap2 = os.path.abspath(fastq_p2)
@@ -104,16 +110,22 @@ def zip_and_link(fastq_s: Optional[str],
                 os.symlink(ap2, outfile_p2)
             else:
                 # Gzip the files
+                logi.info(f"FASTQ {fastq_p1} is unzipped - zipping")
                 zip_to_file(fastq_p1, outfile_p1, cmdout, logi)
+                logi.info(f"FASTQ {fastq_p2} is unzipped - zipping")
                 zip_to_file(fastq_p2, outfile_p2, cmdout, logi)
             # Empty placeholder for single end
             SGSetup.touch_only([outfile_s], cmdout, logi)
+            typ = 'paired'
         else:
             # If the file path is not valid
             SGErrors.fastq_not_found([fastq_p1, fastq_p2])
     else:
         # If both file paths are None or False raise an error
         SGErrors.no_files_found()
+    typ_out = open(f"{outdir}/data_type.txt", "w")
+    typ_out.write(typ)
+    typ_out.close()
 
 
 def download_fastq_fasterqdump(sra_id: str, outdir: str, outfiles: list,
@@ -137,7 +149,7 @@ def download_fastq_fasterqdump(sra_id: str, outdir: str, outfiles: list,
     """
     # Download the files
     statement = f'fasterq-dump --split-files {sra_id} --outdir {outdir}'
-    SGSetup.run_log_command(cmdout, statement, outdir, 'fasterq',
+    SGSetup.run_log_command(statement, cmdout, outdir, 'fasterq',
                             sra_id, logi)
 
     p1 = f'{outdir}/{sra_id}_1.fastq'
@@ -204,15 +216,15 @@ def download_fastq_ena(sra_id: str, outdir: str, outfiles: list,
             SGErrors.no_aspera_config(aspera_config)
         statement = f'{ena_dir}/enaDataGet -f fastq -as {aspera_config} \
 -d {outdir} {sra_id}'
-        
+
     # Get the data
-    SGSetup.run_log_command(cmdout, statement, outdir, 'ena', sra_id, logi)
+    SGSetup.run_log_command(statement, cmdout, outdir, 'ena', sra_id, logi)
 
     # Aspera makes a folder with additional log files - move it into outdir
     if method == 'ena_aspera':
         shutil.move(f'{outdir}/{sra_id}/logs',
                     f'{outdir}/fastqs/enaDataGet_logs')
-        
+
     # Paths where ENA will have stored the files
     p1 = f'{outdir}/{sra_id}/{sra_id}_1.fastq.gz'
     p2 = f'{outdir}/{sra_id}/{sra_id}_2.fastq.gz'
@@ -223,20 +235,20 @@ def download_fastq_ena(sra_id: str, outdir: str, outfiles: list,
     # Move the files to the right place, delete empty directories
     if os.path.exists(p1) and os.path.exists(p2):
         statement = f'mv {p1} {outp1}'
-        SGSetup.run_log_command(cmdout, statement)
+        SGSetup.run_log_command(statement, cmdout)
 
         statement = f'mv {p2} {outp2}'
-        SGSetup.run_log_command(cmdout, statement)
+        SGSetup.run_log_command(statement, cmdout)
 
         statement = f'rm -rf {outdir}/{sra_id}'
-        SGSetup.run_log_command(cmdout, statement)
+        SGSetup.run_log_command(statement, cmdout)
         return ("paired")
 
     elif os.path.exists(s):
         statement = f'mv {s} {outs}'
-        SGSetup.run_log_command(cmdout, statement)
+        SGSetup.run_log_command(statement, cmdout)
         statement = f'rm -rf {outdir}/{sra_id}'
-        SGSetup.run_log_command(cmdout, statement)
+        SGSetup.run_log_command(statement, cmdout)
         return ("single")
 
 
@@ -290,3 +302,44 @@ def download_fastq(sra_id: str, method: str, outfiles: list, outdir: str,
         SGSetup.touch_only([outfiles[0]], cmdout, logi)
     else:
         SGSetup.touch_only([outfiles[1], outfiles[2]], cmdout, logi)
+
+
+def trim_reads_trim_galore(in_s, in_p1, in_p2,
+                           out_s, out_p1, out_p2,
+                           outdir, prefix, typ, cmdout, logi):
+    if typ == 'paired':
+        statement = f"trim_galore --paired -o {outdir}/trimmed {in_p1} {in_p2}"
+        SGSetup.run_log_command(statement, cmdout, outdir,
+                                'trim_galore', prefix, logi)
+        statement = f"mv {outdir}/trimmed/{prefix}.fq.1.gz_val_1.fq.gz \
+                      {out_p1}"
+        SGSetup.run_log_command(statement, cmdout)
+        statement = f"mv {outdir}/trimmed/{prefix}.fq.2.gz_val_2.fq.gz \
+                      {out_p2}"
+        SGSetup.run_log_command(statement, cmdout)
+        SGSetup.touch_only([out_s], cmdout, logi)
+    else:
+        statement = f"trim_galore -o {outdir}/trimmed {in_s}"
+        SGSetup.run_log_command(statement, cmdout, outdir,
+                                'trim_galore', prefix, logi)
+        statement = f"mv {outdir}/trimmed/{prefix}_trimmed.fq.gz {out_s}"
+        SGSetup.run_log_command(statement, cmdout)
+        SGSetup.touch_only([out_p1, out_p2], cmdout, logi)
+
+
+def trim_reads(infiles: list,
+               outfiles: list,
+               outdir: str,
+               prefix: str,
+               trimmer: str,
+               typ: str,
+               cmdout: str,
+               logi: TextIO):
+    in_s, in_p1, in_p2 = infiles
+    out_s, out_p1, out_p2 = outfiles
+    if trimmer == 'trim_galore':
+        trim_reads_trim_galore(in_s, in_p1, in_p2,
+                               out_s, out_p1, out_p2,
+                               outdir, prefix, typ, cmdout, logi)
+    else:
+        SGErrors.trimmer_not_found(trimmer)

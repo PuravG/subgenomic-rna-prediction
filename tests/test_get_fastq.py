@@ -7,6 +7,10 @@ import gzip
 
 
 def matchRunTimeErrorSnakemake(snakemake_output, string):
+    """
+    Read the STDERR from a snakemake run and look for a specific error
+    message.
+    """
     for line in str(snakemake_output.stderr.decode('utf-8')).split("\n"):
         if string in line:
             return True
@@ -14,6 +18,9 @@ def matchRunTimeErrorSnakemake(snakemake_output, string):
 
 
 def compare_zipped(filepath1, filepath2):
+    """
+    Compare each line of two zipped files and check that all are identical
+    """
     g1 = gzip.open(filepath1).readlines()
     g2 = gzip.open(filepath2).readlines()
     for l1, l2 in zip(g1, g2):
@@ -22,6 +29,9 @@ def compare_zipped(filepath1, filepath2):
 
 
 def hash_file(filepath):
+    '''
+    Check if two files are identical using md5sum
+    '''
     hasher = hashlib.md5()  # You can use other algorithms like md5 or sha1
     with open(filepath, 'rb') as f:
         content = f.read()
@@ -173,18 +183,19 @@ def test_getfastq_bad_start_point():
      ('config_pe_ena', 'fastqs_pe_ena', 'ena'),
      ('config_pe_ena_aspera', 'fastqs_pe_ena_aspera', 'ena')])
 def test_getfastq_online_paired(config_file, stem, suffix):
+    # Set up file paths
     expected_dir = "tests/expected_output/fastq_tests"
     expected_output_1 = f"{expected_dir}/ERR5715266_{suffix}.fq.1.gz"
     expected_output_2 = f"{expected_dir}/ERR5715266_{suffix}.fq.2.gz"
     config_path = "tests/config_files/fastq_tests/%s.yaml" % config_file
-
-    result = run_snakemake(config_path, "get_fastq")
-
     test_output_dir = f"tests/test_output_{stem}"
     test_output_1 = f"{test_output_dir}/fastqs/ERR5715266.fq.1.gz"
     test_output_2 = f"{test_output_dir}/fastqs/ERR5715266.fq.2.gz"
-
+    # Run the pipeline
+    result = run_snakemake(config_path, "get_fastq")
     assert result.returncode == 0
+
+    # Check the output is correct
     assert compare_zipped(expected_output_1, test_output_1)
     assert compare_zipped(expected_output_2, test_output_2)
     shutil.rmtree(test_output_dir)
@@ -196,16 +207,19 @@ def test_getfastq_online_paired(config_file, stem, suffix):
      ('config_se_ena', 'fastqs_se_ena', 'ena'),
      ('config_se_ena_aspera', 'fastqs_se_ena_aspera', 'ena')])
 def test_getfastq_online_single(config_file, stem, suffix):
+    # Set up file paths
     expected_dir = "tests/expected_output/fastq_tests"
     expected_output = f"{expected_dir}/SRR28628208_{suffix}.fq.gz"
     config_path = "tests/config_files/fastq_tests/%s.yaml" % config_file
-
-    result = run_snakemake(config_path, "get_fastq")
-
     test_output_dir = f"tests/test_output_{stem}"
     test_output = f"{test_output_dir}/fastqs/SRR28628208.fq.gz"
 
+    # Run the pipeline
+    result = run_snakemake(config_path, "get_fastq")
+
+    # Check the output is correct
     assert result.returncode == 0
+
     assert compare_zipped(expected_output, test_output)
     shutil.rmtree(test_output_dir)
 
@@ -257,3 +271,20 @@ def test_getfastq_no_aspera_config():
         result, "Aspera config file not found at")
     assert result.returncode == 1, result.returncode
     shutil.rmtree('placeholder')
+
+
+def test_getfastq_skip():
+    """Test Snakefile with bam as the start_point - should just make empty
+    placeholder files"""
+    config_dir = 'tests/config_files/fastq_tests'
+    config_path = f"{config_dir}/config_bam_start.yaml"
+    test_output_dir = "tests/test_output_fastqs_bam_start"
+    test_output_p1 = f"{test_output_dir}/fastqs/bam_start.fq.1.gz"
+    test_output_p2 = f"{test_output_dir}/fastqs/bam_start.fq.2.gz"
+    test_output_s = f"{test_output_dir}/fastqs/bam_start.fq.gz"
+
+    result = run_snakemake(config_path, "get_fastq")
+    assert result.returncode == 0, result.returncode
+    assert os.path.getsize(test_output_p1) == 0
+    assert os.path.getsize(test_output_p2) == 0
+    assert os.path.getsize(test_output_s) == 0

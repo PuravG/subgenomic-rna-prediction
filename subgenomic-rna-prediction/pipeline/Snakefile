@@ -18,14 +18,23 @@ logi = SGSetup.set_up_logging(outdir, prefix)
 cmdout = f'{outdir}/{prefix}_commands.log'
 
 rule get_fastq:
+    '''
+    Get the initial FASTQ file(s) and put into the outdir/fastqs folder
+    as prefix.fq.gz (single end) or prefix.fq.1.gz and prefix.fq.2.gz (paired
+    end).
+    If the start_point is trimmed_fastq or bam then just put placeholders
+    for this file.
+    If the start_point is raw_fastq - link to the files if they are zipped
+    or make a zipped copy if they are not.
+    If the start_point is sra_id - get the files from SRA or ENA as specified
+    '''
     output:
         se = f"{outdir}/fastqs/{prefix}.fq.gz",
         pe1 = f"{outdir}/fastqs/{prefix}.fq.1.gz",
         pe2 = f"{outdir}/fastqs/{prefix}.fq.2.gz"
     run:
-        
         if start_point == "bam" or start_point == 'trimmed_fastq':
-            SGFastq.touch_only(output, cmdout, logi)
+            SGSetup.touch_only(output, cmdout, logi)
         elif start_point == "raw_fastq":
             fastq_p1 = config["fastq"]["paired_end_1"]
             fastq_p2 = config["fastq"]["paired_end_2"]
@@ -34,6 +43,7 @@ rule get_fastq:
                                  fastq_p1,
                                  fastq_p2,
                                  output,
+                                 outdir,
                                  cmdout,
                                  logi)
         elif start_point == 'sra_id':
@@ -47,3 +57,45 @@ rule get_fastq:
         else:
             SGErrors.bad_start_point(start_point)
 
+
+rule trim_fastq:
+    '''
+    Put the trimmed FASTQ file(s) into outdir/trimmed
+    as prefix.fq.gz (single end) or prefix.fq.1.gz and prefix.fq.2.gz (paired
+    end).
+    If the start_point is bam then just put placeholders.
+    If the start_point is trimmed_fastq, link to the files if they are zipped
+    or make a zipped copy if they are not.
+    Otherwise, take the output of get_fastq and trim with trim_galore
+    '''
+    input:
+        se = f"{outdir}/fastqs/{prefix}.fq.gz",
+        pe1 = f"{outdir}/fastqs/{prefix}.fq.1.gz",
+        pe2 = f"{outdir}/fastqs/{prefix}.fq.2.gz"
+    output:
+        se = f"{outdir}/trimmed/{prefix}.fq.gz",
+        pe1 = f"{outdir}/trimmed/{prefix}.fq.1.gz",
+        pe2 = f"{outdir}/trimmed/{prefix}.fq.2.gz"
+    run:
+        if start_point == "bam":
+            SGSetup.touch_only(output, cmdout, logi)
+        elif start_point == 'trimmed_fastq':
+            fastq_p1 = config["fastq"]["paired_end_1"]
+            fastq_p2 = config["fastq"]["paired_end_2"]
+            fastq_s = config["fastq"]["single_end"]
+            SGFastq.zip_and_link(fastq_s,
+                                 fastq_p1,
+                                 fastq_p2,
+                                 output,
+                                 outdir,
+                                 cmdout,
+                                 logi)
+        else:
+            typ = open(f"{outdir}/data_type.txt").readline().strip()
+            SGFastq.trim_reads(input, output,
+                               outdir, 
+                               prefix,
+                               config['fastq']['trimming_tool'],
+                               typ,
+                               cmdout,
+                               logi)

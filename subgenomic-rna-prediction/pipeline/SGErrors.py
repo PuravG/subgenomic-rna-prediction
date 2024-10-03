@@ -26,11 +26,11 @@ not {start_point}
 """)
 
 
-def tool_fail(sra_id, stem):
+def tool_fail(stem, sra_id):
     raise RuntimeError(
                 f"""
 ###
-{stem} run failed with SRA ID {sra_id}
+{stem} run failed with ID {sra_id}
 ###
 """)
 
@@ -50,5 +50,14 @@ def no_aspera_config(aspera_config):
 ###
 Aspera config file not found at {aspera_config}. Specify a valid file or
 use source "ena" instead of "ena_aspera" to download without Aspera
+###
+""")
+
+
+def trimmer_not_found(trimmer):
+    raise RuntimeError(
+                f"""
+###
+Trimming tool {trimmer} is not currently implemented
 ###
 """)
