@@ -25,6 +25,9 @@ rule get_fastq:
                                  fastq_p2,
                                  output)
         elif start_point == 'sra_id':
-            pass
+            SGFastq.download_fastq(config['fastq']['sra_run'],
+                                   config['fastq']['source'].lower(),
+                                   output,
+                                   outdir)
         else:
             SGErrors.bad_start_point(start_point)

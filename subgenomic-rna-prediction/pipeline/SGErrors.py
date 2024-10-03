@@ -24,3 +24,12 @@ The start_point parameter should be sra_id, raw_fastq, trimmed_fastq or bam, \
 not %s
 ###
 """ % start_point)
+
+
+def fasterq_fail(sra_id):
+    raise RuntimeError(
+                """
+###
+fasterq_dump run failed with SRA ID %s
+###
+""" % sra_id)
