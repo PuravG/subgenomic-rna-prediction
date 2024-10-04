@@ -10,21 +10,21 @@ virus:
   # NCBI nucleotide accession for virus genome
   genome_ID: 
   # Path to local FASTA file of virus genome
-  genome_path: 
+  genome_path:
   genome_name: dengue
 
 fastq:
   # Source for FASTQ files - can be local, ENA, SRA or ENA_Aspera
-  source: ena
+  source: hohoho
 
   # If you want to download a FASTQ file, provide the SRA run ID here
-  sra_run: notena
+  sra_run: ERR5715266
 
   # If using local  provide the paths here
   # Please only provide either paired end or single end files and leave the
   # other option blank - if both are provided only single end will be
   # processed
-  outfile_prefix: bad_ena
+  outfile_prefix: bad_source
   single_end:
   paired_end_1:
   paired_end_2:

@@ -1,4 +1,5 @@
 import SGFastq
+import SGGenome
 import SGErrors
 import SGSetup
 import os
@@ -16,6 +17,21 @@ if not os.path.exists(outdir):
 
 logi = SGSetup.set_up_logging(outdir, prefix)
 cmdout = f'{outdir}/{prefix}_commands.log'
+
+genome_name = config['virus']['genome_name']
+
+
+rule get_genome:
+    output:
+        f'{outdir}/genome/{genome_name}.fasta'
+    run:
+        if config['virus']['start_point'] == 'local':
+            SGGenome.link_genome(config['virus']['genome_path'],
+                                 genome_name,
+                                 outdir,
+                                 cmdout,
+                                 logi)
+
 
 rule get_fastq:
     '''

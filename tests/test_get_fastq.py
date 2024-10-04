@@ -1,54 +1,7 @@
 import pytest
-import subprocess
 import os
 import shutil
-import hashlib
-import gzip
-
-
-def matchRunTimeErrorSnakemake(snakemake_output, string):
-    """
-    Read the STDERR from a snakemake run and look for a specific error
-    message.
-    """
-    for line in str(snakemake_output.stderr.decode('utf-8')).split("\n"):
-        if string in line:
-            return True
-    return False
-
-
-def compare_zipped(filepath1, filepath2):
-    """
-    Compare each line of two zipped files and check that all are identical
-    """
-    g1 = gzip.open(filepath1).readlines()
-    g2 = gzip.open(filepath2).readlines()
-    for l1, l2 in zip(g1, g2):
-        assert l1 == l2
-    return True
-
-
-def hash_file(filepath):
-    '''
-    Retrieve the md5sum for a file
-    '''
-    hasher = hashlib.md5()  # You can use other algorithms like md5 or sha1
-    with open(filepath, 'rb') as f:
-        content = f.read()
-        hasher.update(content)
-    # Return the hexadecimal digest of the hash
-    return hasher.hexdigest()
-
-
-def run_snakemake(config, func):
-    """Helper function to run snakemake."""
-    statement = "snakemake \
-                --snakefile subgenomic-rna-prediction/pipeline/Snakefile \
-                --configfile %s \
-                -R %s" % (config, func)
-    result = subprocess.run(statement, shell=True,
-                            capture_output=True)
-    return result
+import helper_functions
 
 
 @pytest.mark.parametrize(
@@ -70,13 +23,13 @@ def test_getfastq_se(test_file, config_file, stem):
     config_path = "tests/config_files/fastq_tests/%s" % config_file
 
     # Run the pipeline
-    result = run_snakemake(config_path, "get_fastq")
+    result = helper_functions.run_snakemake(config_path, "get_fastq")
 
     # Check if snakemake ran successfully
     assert result.returncode == 0  # Check if snakemake ran successfully
 
     # Check the output files are identical to the expected outputs
-    assert compare_zipped(expected_output, test_output)
+    assert helper_functions.compare_zipped(expected_output, test_output)
 
     # Check the paired end placeholders exist
     assert os.path.exists(test_output.replace(".fq.gz", ".fq.1.gz"))
@@ -108,14 +61,14 @@ def test_getfastq_pe(test_files, config_file, stem):
     config_path = "tests/config_files/fastq_tests/%s" % config_file
 
     # Run the pipeline
-    result = run_snakemake(config_path, "get_fastq")
+    result = helper_functions.run_snakemake(config_path, "get_fastq")
 
     # Check if snakemake ran successfully
     assert result.returncode == 0
 
     # Check the output files are identical to the expected outputs
-    assert compare_zipped(expected_output_1, test_output_1)
-    assert compare_zipped(expected_output_2, test_output_2)
+    assert helper_functions.compare_zipped(expected_output_1, test_output_1)
+    assert helper_functions.compare_zipped(expected_output_2, test_output_2)
 
     # Check the single end placeholder exists
     assert os.path.exists(test_output_1.replace(".fq.1.gz", ".fq.gz"))
@@ -135,10 +88,10 @@ def test_getfastq_missing(config_file):
     config_path = "tests/config_files/fastq_tests/%s" % config_file
 
     # Run the pipeline
-    result = run_snakemake(config_path, "get_fastq")
+    result = helper_functions.run_snakemake(config_path, "get_fastq")
 
     # Check error is correct
-    assert matchRunTimeErrorSnakemake(
+    assert helper_functions.matchRunTimeErrorSnakemake(
         result, "At least one of your FASTQ files does not exist")
     assert result.returncode == 1, result.returncode
     shutil.rmtree('placeholder')
@@ -152,10 +105,10 @@ def test_getfastq_allmissing():
     config_path = "tests/config_files/fastq_tests/config_missing_all.yaml"
 
     # Run the pipeline
-    result = run_snakemake(config_path, "get_fastq")
+    result = helper_functions.run_snakemake(config_path, "get_fastq")
 
     # Check error is correct
-    assert matchRunTimeErrorSnakemake(
+    assert helper_functions.matchRunTimeErrorSnakemake(
         result, "FASTQ input specified but no fastq files provided")
     assert result.returncode == 1, result.returncode
     shutil.rmtree('placeholder')
@@ -168,10 +121,10 @@ def test_getfastq_bad_start_point():
     config_path = "tests/config_files/fastq_tests/config_bad_start_point.yaml"
 
     # Run the pipeline
-    result = run_snakemake(config_path, "get_fastq")
+    result = helper_functions.run_snakemake(config_path, "get_fastq")
 
     # Check error is correct
-    assert matchRunTimeErrorSnakemake(
+    assert helper_functions.matchRunTimeErrorSnakemake(
         result, "The start_point parameter should be")
     assert result.returncode == 1, result.returncode
     shutil.rmtree('placeholder')
@@ -192,12 +145,12 @@ def test_getfastq_online_paired(config_file, stem, suffix):
     test_output_1 = f"{test_output_dir}/fastqs/ERR5715266.fq.1.gz"
     test_output_2 = f"{test_output_dir}/fastqs/ERR5715266.fq.2.gz"
     # Run the pipeline
-    result = run_snakemake(config_path, "get_fastq")
+    result = helper_functions.run_snakemake(config_path, "get_fastq")
     assert result.returncode == 0
 
     # Check the output is correct
-    assert compare_zipped(expected_output_1, test_output_1)
-    assert compare_zipped(expected_output_2, test_output_2)
+    assert helper_functions.compare_zipped(expected_output_1, test_output_1)
+    assert helper_functions.compare_zipped(expected_output_2, test_output_2)
     shutil.rmtree(test_output_dir)
 
 
@@ -215,12 +168,12 @@ def test_getfastq_online_single(config_file, stem, suffix):
     test_output = f"{test_output_dir}/fastqs/SRR28628208.fq.gz"
 
     # Run the pipeline
-    result = run_snakemake(config_path, "get_fastq")
+    result = helper_functions.run_snakemake(config_path, "get_fastq")
 
     # Check the output is correct
     assert result.returncode == 0
 
-    assert compare_zipped(expected_output, test_output)
+    assert helper_functions.compare_zipped(expected_output, test_output)
     shutil.rmtree(test_output_dir)
 
 
@@ -230,10 +183,10 @@ def test_getfastq_bad_source():
     config_path = "tests/config_files/fastq_tests/config_bad_source.yaml"
 
     # Run the pipeline
-    result = run_snakemake(config_path, "get_fastq")
+    result = helper_functions.run_snakemake(config_path, "get_fastq")
 
     # Check error is correct
-    assert matchRunTimeErrorSnakemake(
+    assert helper_functions.matchRunTimeErrorSnakemake(
         result, "Download method")
     assert result.returncode == 1, result.returncode
     shutil.rmtree('placeholder')
@@ -248,10 +201,10 @@ def test_getfastq_bad_ID(config_file):
     config_path = "tests/config_files/fastq_tests/%s.yaml" % config_file
 
     # Run the pipeline
-    result = run_snakemake(config_path, "get_fastq")
+    result = helper_functions.run_snakemake(config_path, "get_fastq")
 
     # Check error is correct
-    assert matchRunTimeErrorSnakemake(
+    assert helper_functions.matchRunTimeErrorSnakemake(
         result, "run failed with ID ")
     assert result.returncode == 1, result.returncode
     shutil.rmtree('placeholder')
@@ -264,10 +217,10 @@ def test_getfastq_no_aspera_config():
     config_path = f"{config_dir}/config_se_ena_aspera_noconfig.yaml"
 
     # Run the pipeline
-    result = run_snakemake(config_path, "get_fastq")
+    result = helper_functions.run_snakemake(config_path, "get_fastq")
 
     # Check error is correct
-    assert matchRunTimeErrorSnakemake(
+    assert helper_functions.matchRunTimeErrorSnakemake(
         result, "Aspera config file not found at")
     assert result.returncode == 1, result.returncode
     shutil.rmtree('placeholder')
@@ -283,7 +236,13 @@ def test_getfastq_skip():
     test_output_p2 = f"{test_output_dir}/fastqs/bam_start.fq.2.gz"
     test_output_s = f"{test_output_dir}/fastqs/bam_start.fq.gz"
 
-    result = run_snakemake(config_path, "get_fastq")
+    result = helper_functions.run_snakemake(config_path, "get_fastq")
+    assert result.returncode == 0, result.returncode
+    assert os.path.getsize(test_output_p1) == 0
+    assert os.path.getsize(test_output_p2) == 0
+    assert os.path.getsize(test_output_s) == 0
+
+    result = helper_functions.run_snakemake(config_path, "trim_fastq")
     assert result.returncode == 0, result.returncode
     assert os.path.getsize(test_output_p1) == 0
     assert os.path.getsize(test_output_p2) == 0
@@ -304,11 +263,13 @@ def testTrimPE():
     test_output_1 = f"{test_output_dir}/trimmed/pe_trim.fq.1.gz"
     test_output_2 = f"{test_output_dir}/trimmed/pe_trim.fq.2.gz"
 
-    result = run_snakemake(config_path, "trim_fastq")
+    result = helper_functions.run_snakemake(config_path, "trim_fastq")
     assert result.returncode == 0, result.returncode
 
-    assert hash_file(expected_output_1) == hash_file(test_output_1)
-    assert hash_file(expected_output_2) == hash_file(test_output_2)
+    assert helper_functions.hash_file(
+        expected_output_1) == helper_functions.hash_file(test_output_1)
+    assert helper_functions.hash_file(
+        expected_output_2) == helper_functions.hash_file(test_output_2)
     shutil.rmtree('tests/test_output_fastqs_pe_trim')
 
 
@@ -323,10 +284,11 @@ def testTrimSE():
 
     test_output = f"{test_output_dir}/trimmed/se_trim.fq.gz"
 
-    result = run_snakemake(config_path, "trim_fastq")
+    result = helper_functions.run_snakemake(config_path, "trim_fastq")
     assert result.returncode == 0, result.returncode
 
-    assert hash_file(expected_output) == hash_file(test_output)
+    assert helper_functions.hash_file(
+        expected_output) == helper_functions.hash_file(test_output)
     shutil.rmtree('tests/test_output_fastqs_se_trim')
 
 
@@ -335,9 +297,9 @@ def testTrimFail():
     config_dir = 'tests/config_files/fastq_tests'
     config_path = f"{config_dir}/config_bad_trim.yaml"
 
-    result = run_snakemake(config_path, "trim_fastq")
+    result = helper_functions.run_snakemake(config_path, "trim_fastq")
     assert result.returncode != 0
-    assert matchRunTimeErrorSnakemake(
+    assert helper_functions.matchRunTimeErrorSnakemake(
         result, "Trimming tool ")
     shutil.rmtree('tests/test_output_fastqs_bad_trim')
 
@@ -358,14 +320,14 @@ def test_getfastq_pe_trimmed_existing():
     config_path = f"{config_dir}/config_pe_trimmed_existing.yaml"
 
     # Run the pipeline
-    result = run_snakemake(config_path, "trim_fastq")
+    result = helper_functions.run_snakemake(config_path, "trim_fastq")
 
     # Check if snakemake ran successfully
     assert result.returncode == 0
 
     # Check the output files are identical to the expected outputs
-    assert compare_zipped(expected_output_1, test_output_1)
-    assert compare_zipped(expected_output_2, test_output_2)
+    assert helper_functions.compare_zipped(expected_output_1, test_output_1)
+    assert helper_functions.compare_zipped(expected_output_2, test_output_2)
 
     # Check the single end placeholder exists
     assert os.path.exists(test_output_1.replace(".fq.1.gz", ".fq.gz"))
@@ -388,13 +350,13 @@ def test_getfastq_se_trimmed_existing():
     config_path = f"{config_dir}/config_se_trimmed_existing.yaml"
 
     # Run the pipeline
-    result = run_snakemake(config_path, "trim_fastq")
+    result = helper_functions.run_snakemake(config_path, "trim_fastq")
 
     # Check if snakemake ran successfully
     assert result.returncode == 0
 
     # Check the output files are identical to the expected outputs
-    assert compare_zipped(expected_output, test_output)
+    assert helper_functions.compare_zipped(expected_output, test_output)
 
     # Check the single end placeholder exists
     assert os.path.exists(test_output.replace(".fq.gz", ".fq.1.gz"))

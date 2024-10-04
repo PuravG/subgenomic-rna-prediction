@@ -61,3 +61,19 @@ def trimmer_not_found(trimmer):
 Trimming tool {trimmer} is not currently implemented
 ###
 """)
+
+
+def no_genome_spec():
+    raise RuntimeError(
+                """
+###
+Genome FASTA file must be specified
+###""")
+
+
+def no_genome_file(genome_path):
+    raise FileNotFoundError(
+                f"""
+###
+Genome FASTA file not found at {genome_path}
+###""")
