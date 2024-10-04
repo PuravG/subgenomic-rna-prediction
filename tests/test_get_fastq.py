@@ -30,7 +30,7 @@ def compare_zipped(filepath1, filepath2):
 
 def hash_file(filepath):
     '''
-    Check if two files are identical using md5sum
+    Retrieve the md5sum for a file
     '''
     hasher = hashlib.md5()  # You can use other algorithms like md5 or sha1
     with open(filepath, 'rb') as f:
@@ -252,7 +252,7 @@ def test_getfastq_bad_ID(config_file):
 
     # Check error is correct
     assert matchRunTimeErrorSnakemake(
-        result, "run failed with SRA ID ")
+        result, "run failed with ID ")
     assert result.returncode == 1, result.returncode
     shutil.rmtree('placeholder')
 
@@ -288,3 +288,117 @@ def test_getfastq_skip():
     assert os.path.getsize(test_output_p1) == 0
     assert os.path.getsize(test_output_p2) == 0
     assert os.path.getsize(test_output_s) == 0
+    shutil.rmtree('tests/test_output_fastqs_bam_start')
+
+
+def testTrimPE():
+    """Test trimming for paired end files"""
+    config_dir = 'tests/config_files/fastq_tests'
+    config_path = f"{config_dir}/config_pe_trim.yaml"
+    test_output_dir = "tests/test_output_fastqs_pe_trim"
+
+    expected_dir = "tests/expected_output/fastq_tests"
+    expected_output_1 = f"{expected_dir}/SRR18609750_1_trimmed.fastq.gz"
+    expected_output_2 = f"{expected_dir}/SRR18609750_2_trimmed.fastq.gz"
+
+    test_output_1 = f"{test_output_dir}/trimmed/pe_trim.fq.1.gz"
+    test_output_2 = f"{test_output_dir}/trimmed/pe_trim.fq.2.gz"
+
+    result = run_snakemake(config_path, "trim_fastq")
+    assert result.returncode == 0, result.returncode
+
+    assert hash_file(expected_output_1) == hash_file(test_output_1)
+    assert hash_file(expected_output_2) == hash_file(test_output_2)
+    shutil.rmtree('tests/test_output_fastqs_pe_trim')
+
+
+def testTrimSE():
+    """Test trimming for single end files"""
+    config_dir = 'tests/config_files/fastq_tests'
+    config_path = f"{config_dir}/config_se_trim.yaml"
+    test_output_dir = "tests/test_output_fastqs_se_trim"
+
+    expected_dir = "tests/expected_output/fastq_tests"
+    expected_output = f"{expected_dir}/SRR7660720_trimmed.fastq.gz"
+
+    test_output = f"{test_output_dir}/trimmed/se_trim.fq.gz"
+
+    result = run_snakemake(config_path, "trim_fastq")
+    assert result.returncode == 0, result.returncode
+
+    assert hash_file(expected_output) == hash_file(test_output)
+    shutil.rmtree('tests/test_output_fastqs_se_trim')
+
+
+def testTrimFail():
+    """Test trimming with a trimmer that is not implemented - should fail"""
+    config_dir = 'tests/config_files/fastq_tests'
+    config_path = f"{config_dir}/config_bad_trim.yaml"
+
+    result = run_snakemake(config_path, "trim_fastq")
+    assert result.returncode != 0
+    assert matchRunTimeErrorSnakemake(
+        result, "Trimming tool ")
+    shutil.rmtree('tests/test_output_fastqs_bad_trim')
+
+
+def test_getfastq_pe_trimmed_existing():
+    """Test Snakefile for user provided trimmed paired end zipped and \
+       unzipped FASTQ files"""
+    # Set up file paths
+    test_output_dir = "tests/test_output_fastqs_pe_trimmed_existing"
+    test_output_1 = f"{test_output_dir}/trimmed/pe_trimmed_existing.fq.1.gz"
+    test_output_2 = f"{test_output_dir}/trimmed/pe_trimmed_existing.fq.2.gz"
+
+    expected_dir = "tests/expected_output/fastq_tests"
+    expected_output_1 = f"{expected_dir}/SRR18609750_1_small.fastq.gz"
+    expected_output_2 = f"{expected_dir}/SRR18609750_2_small.fastq.gz"
+
+    config_dir = "tests/config_files/fastq_tests"
+    config_path = f"{config_dir}/config_pe_trimmed_existing.yaml"
+
+    # Run the pipeline
+    result = run_snakemake(config_path, "trim_fastq")
+
+    # Check if snakemake ran successfully
+    assert result.returncode == 0
+
+    # Check the output files are identical to the expected outputs
+    assert compare_zipped(expected_output_1, test_output_1)
+    assert compare_zipped(expected_output_2, test_output_2)
+
+    # Check the single end placeholder exists
+    assert os.path.exists(test_output_1.replace(".fq.1.gz", ".fq.gz"))
+
+    # Remove test data
+    shutil.rmtree(test_output_dir)
+
+
+def test_getfastq_se_trimmed_existing():
+    """Test Snakefile for user provided trimmed paired end zipped and \
+       unzipped FASTQ files"""
+    # Set up file paths
+    test_output_dir = "tests/test_output_fastqs_se_trimmed_existing"
+    test_output = f"{test_output_dir}/trimmed/se_trimmed_existing.fq.gz"
+
+    expected_dir = "tests/expected_output/fastq_tests"
+    expected_output = f"{expected_dir}/SRR7660720_small.fastq.gz"
+
+    config_dir = "tests/config_files/fastq_tests"
+    config_path = f"{config_dir}/config_se_trimmed_existing.yaml"
+
+    # Run the pipeline
+    result = run_snakemake(config_path, "trim_fastq")
+
+    # Check if snakemake ran successfully
+    assert result.returncode == 0
+
+    # Check the output files are identical to the expected outputs
+    assert compare_zipped(expected_output, test_output)
+
+    # Check the single end placeholder exists
+    assert os.path.exists(test_output.replace(".fq.gz", ".fq.1.gz"))
+    assert os.path.exists(test_output.replace(".fq.gz", ".fq.2.gz"))
+
+    # Remove test data
+    shutil.rmtree(test_output_dir)
