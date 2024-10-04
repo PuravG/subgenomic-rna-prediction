@@ -4,6 +4,15 @@ general:
   start_point: bam
   threads: 4
 
+virus:
+  # can be local or NCBI
+  start_point: local
+  # NCBI nucleotide accession for virus genome
+  genome_ID: 
+  # Path to local FASTA file of virus genome
+  genome_path: 
+  genome_name: dengue
+
 fastq:
   # Source for FASTQ files - can be local, ENA, SRA or ENA_Aspera
   source: ena
