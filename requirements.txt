@@ -1,0 +1,4 @@
+sra-tools
+pigz
+trim-galore
+ncbi-datasets-cli

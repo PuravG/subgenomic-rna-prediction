@@ -1,0 +1,20 @@
+general:
+  output_dir: tests/test_output_fastqs_pe_zip
+  # sra_id, raw_fastq, trimmed_fastq, bam
+  start_point: raw_fastq
+  threads: 4
+
+virus:
+  # can be local or NCBI
+  start_point: local
+  # NCBI nucleotide accession for virus genome
+  genome_ID: 
+  # Path to local FASTA file of virus genome
+  genome_path: 
+  genome_name: dengue
+
+fastq:
+  outfile_prefix: pe_zip
+  single_end:
+  paired_end_1: tests/fastqs/SRR18609750_1_small.fastq.gz
+  paired_end_2: tests/fastqs/SRR18609750_2_small.fastq.gz
